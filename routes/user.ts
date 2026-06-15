@@ -85,7 +85,7 @@ router.post('/:id/follow', authenticateToken, async (req: AuthenticatedRequest, 
       // const users = await User.find({_id: { $ne : req.user._id}}).select('-password').lean();
       res.status(201).json({ 
         status: 'user followed successfully', 
-        // user: currentUser,
+        user: currentUser,
         // users: users.map((user) => ({...user, isFollowing: currentUser?.following.includes(user._id)}))
       });
     } else {
@@ -124,7 +124,7 @@ router.post('/:id/unfollow', authenticateToken, async (req: AuthenticatedRequest
       // const users = await User.find({_id: { $ne : req.user._id}}).select('-password').lean();
       res.status(201).json({ 
         status: 'user unfollowed successfully', 
-        // user: currentUser,
+        user: currentUser,
         // users: users.map((user) => ({...user, isFollowing: currentUser?.following.includes(user._id)}))
       });
     } else {
