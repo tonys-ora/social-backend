@@ -39,10 +39,10 @@ router.post('/login', async (req: Request, res: Response) => {
     } else {
       res.status(400).json({message: 'Invalid credentials'});
     }
-  
+    
     const token = jwt.sign({_id: user._id, username: user.username}, process.env.JWT_SECRET || '');
-  
-    res.header('authorization', 'Bearer ' + token).json({token, userId:user._id});
+    
+    res.header('authorization', 'Bearer ' + token).json({token, userId: user._id, username: user.username, email: user.email});
   } catch(err) {
     if (err instanceof Error) {
       res.status(400).json({message: err.message});
@@ -82,11 +82,11 @@ router.post('/:id/follow', authenticateToken, async (req: AuthenticatedRequest, 
       await userToFollow.save();
       await currentUser.save();
 
-      const users = await User.find({_id: { $ne : req.user._id}}).select('-password').lean();
+      // const users = await User.find({_id: { $ne : req.user._id}}).select('-password').lean();
       res.status(201).json({ 
         status: 'user followed successfully', 
-        user: currentUser,
-        users: users.map((user) => ({...user, isFollowing: currentUser?.following.includes(user._id)}))
+        // user: currentUser,
+        // users: users.map((user) => ({...user, isFollowing: currentUser?.following.includes(user._id)}))
       });
     } else {
       res.status(400).json({status: 'you are already following this user'});
@@ -121,11 +121,11 @@ router.post('/:id/unfollow', authenticateToken, async (req: AuthenticatedRequest
       await userToFollow.save();
       await currentUser.save();
 
-      const users = await User.find({_id: { $ne : req.user._id}}).select('-password').lean();
+      // const users = await User.find({_id: { $ne : req.user._id}}).select('-password').lean();
       res.status(201).json({ 
         status: 'user unfollowed successfully', 
-        user: currentUser,
-        users: users.map((user) => ({...user, isFollowing: currentUser?.following.includes(user._id)}))
+        // user: currentUser,
+        // users: users.map((user) => ({...user, isFollowing: currentUser?.following.includes(user._id)}))
       });
     } else {
       res.status(400).json({ status: 'you are not following this user'});
@@ -145,7 +145,14 @@ router.get('/explore', authenticateToken, async (req : AuthenticatedRequest, res
     const users = await User.find({_id: { $ne : req.user._id}}).select('-password').lean();
     const currentUser = await User.findById(req.user._id);
 
-    res.status(200).json(users.map((user) => ({...user, isFollowing: currentUser?.following.includes(user._id)})));
+    res.status(200).json(users.map((user) => ({
+      _id: user._id,
+      email: user.email,
+      username: user.username,
+      followerCount: user.followers.length,
+      followingCount: user.following.length,
+      isFollowing: currentUser?.following.includes(user._id)
+    })));
   } catch(err) {
     if (err instanceof Error) {
       res.status(400).json({message: err.message});

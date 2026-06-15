@@ -24,7 +24,7 @@ router.post('/', authenticateToken, async (req: AuthenticatedRequest, res: Respo
 })
 
 // get posts
-router.get('/', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const posts = await Post.find().populate('user', ['username', 'email'])
                                   .populate('likes', 'username')
@@ -50,7 +50,7 @@ router.post('/:postId/like', authenticateToken, async (req: AuthenticatedRequest
       await post.save();
       res.status(200).json('post liked successfully');
     } else {
-      res.status(404).json('you already liked the post');
+      res.status(404).json({message: 'you already liked the post'});
     }
   } catch(err) {
     if (err instanceof Error) {
@@ -73,8 +73,11 @@ router.post('/:postId/comment', authenticateToken, async (req: AuthenticatedRequ
     };
 
     post.comments.push(comment);
-    await post.save();
-    res.status(200).json({status: 'comment added successfully', comment});
+    const tmpPost = await post.save();
+    const newPost = await Post.findById(tmpPost._id).populate('user', ['username', 'email'])
+                        .populate('likes', 'username')
+                        .populate('comments.user', 'username')
+    res.status(200).json(newPost);
   } catch(err) {
     if (err instanceof Error) {
       res.status(400).json({message: err.message});
