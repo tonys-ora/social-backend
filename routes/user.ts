@@ -17,7 +17,9 @@ router.post('/register', async (req: Request, res: Response) => {
       password: hashedPassword
     });
     const newUser = await user.save();
-    res.status(201).json(newUser);
+
+    const token = jwt.sign({_id: newUser._id, username: newUser.username}, process.env.JWT_SECRET || '');
+    res.header('authorization', 'Bearer ' + token).json({token, userId: newUser._id, username: newUser.username, email: newUser.email});
   } catch(err) {
     if (err instanceof Error) {
       res.status(400).json({message: err.message});
@@ -41,7 +43,6 @@ router.post('/login', async (req: Request, res: Response) => {
     }
     
     const token = jwt.sign({_id: user._id, username: user.username}, process.env.JWT_SECRET || '');
-    
     res.header('authorization', 'Bearer ' + token).json({token, userId: user._id, username: user.username, email: user.email});
   } catch(err) {
     if (err instanceof Error) {     
@@ -69,6 +70,8 @@ router.get('/profile', authenticateToken, async (req: AuthenticatedRequest, res:
 // follow
 router.post('/:id/follow', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try{
+    if (req.params.id === req.user._id) res.status(400).json({message: "you can't follow your self"});
+
     const userToFollow = await User.findById(req.params.id);
     const currentUser = await User.findById(req.user._id);
     
@@ -83,11 +86,11 @@ router.post('/:id/follow', authenticateToken, async (req: AuthenticatedRequest, 
       await currentUser.save();
 
       res.status(201).json({ 
-        status: 'user followed successfully', 
+        message: 'user followed successfully', 
         user: userToFollow,
       });
     } else {
-      res.status(400).json({status: 'you are already following this user'});
+      res.status(400).json({message: 'you are already following this user'});
     }
   } catch(err) {
     if (err instanceof Error) {
@@ -101,6 +104,8 @@ router.post('/:id/follow', authenticateToken, async (req: AuthenticatedRequest, 
 // unfollow
 router.post('/:id/unfollow', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try{
+    if (req.params.id === req.user._id) res.status(400).json({message: "you can't unfollow your self"});
+
     const userToFollow = await User.findById(req.params.id);
     const currentUser = await User.findById(req.user._id);
     
@@ -120,11 +125,11 @@ router.post('/:id/unfollow', authenticateToken, async (req: AuthenticatedRequest
       await currentUser.save();
 
       res.status(201).json({ 
-        status: 'user unfollowed successfully', 
+        message: 'user unfollowed successfully', 
         user: userToFollow,
       });
     } else {
-      res.status(400).json({ status: 'you are not following this user'});
+      res.status(400).json({ message: 'you are not following this user'});
     }
   } catch(err) {
     if (err instanceof Error) {
@@ -136,10 +141,10 @@ router.post('/:id/unfollow', authenticateToken, async (req: AuthenticatedRequest
 });
 
 // fetch data of current user
-router.get('/explore', authenticateToken, async (req : AuthenticatedRequest, res: Response) => {
+router.post('/explore', async (req : Request, res: Response) => {
   try {
-    const users = await User.find({_id: { $ne : req.user._id}}).select('-password').lean();
-    const currentUser = await User.findById(req.user._id);
+    const users = await User.find({}).select('-password').lean();
+    const currentUser = req.body ? await User.findById(req.body.userId) : null;
 
     res.status(200).json(users.map((user) => ({
       _id: user._id,
@@ -159,7 +164,7 @@ router.get('/explore', authenticateToken, async (req : AuthenticatedRequest, res
 })
 
 // get user by ID
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = await User.findById(req.params.id).select('-password');
     if (!user) {

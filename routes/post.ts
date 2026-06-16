@@ -1,6 +1,7 @@
 import express, {Request, Response} from 'express';
 
 import Post from '../models/Post';
+import User from '../models/User';
 import authenticateToken, {AuthenticatedRequest} from '../middleware/auth';
 
 const router = express.Router();
@@ -23,10 +24,20 @@ router.post('/', authenticateToken, async (req: AuthenticatedRequest, res: Respo
   }
 })
 
-// get posts
-router.get('/', async (req: AuthenticatedRequest, res: Response) => {
+// get feed posts
+router.get('/', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const posts = await Post.find().populate('user', ['username', 'email'])
+    const currentUser = await User.findById(req.user._id);
+    const posts = await Post.find({
+      $or : [
+        {
+          user : {$in: currentUser?.following}
+        },
+        {
+          user : currentUser?._id
+        }
+      ]
+    } as any).populate('user', ['username', 'email'])
                                   .populate('likes', 'username')
                                   .populate('comments.user', 'username');
     res.status(201).json(posts);
